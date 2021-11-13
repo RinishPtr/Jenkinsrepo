@@ -1,0 +1,159 @@
+kubectl create ns wpmysql1
+
+kubectl create secret generic wpmysql-pass --from-literal=username=wpusr --from-literal=password=redhat -n wpmysql1
+
+kubectl create -f mysql-nfs-share-pv.yaml -n wpmysql1
+
+kubectl create -f wp-nfs-share-pv.yaml -n wpmysql1
+
+ 
+kubectl create -f  mysql-nfs-share-pvc.yaml -n wpmysql1
+ 
+
+kubectl create -f  wp-nfs-share-pvc.yaml -n wpmysql1
+ 
+
+ 
+kubectl create -f mysql-stateful.yaml -n wpmysql1
+ vim 
+kubectl create -f wordpress-stateful.yaml -n wpmysql1
+ 
+
+
+
+
+
+
+Delete**********
+
+kubectl delete ns wpmysql
+kubectl delete pv mysql-nfs-share wp-nfs-share -n wpmysql
+
+
+
+
+
+
+ap-south-1.compute.internal
+
+
+  initContainers:
+         - name: checkmysql
+           image: busybox
+           command: ["/bin/sh", "-c","until nslookup wordpress-mysql.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local"]
+
+
+
+
+
+
+-------------------------------------------------
+
+
+# kubectl describe pod  weave-net-jw8b6 -n kube-system
+
+# kubectl describe pod  weave-net-jw8b6 -n kube-system | egrep 'Containers|weave-npc:' -A 3
+
+# kubectl exec -n kube-system weave-net-jw8b6 -c weave -- /home/weave/weave --local status
+
+# kubectl logs weave-net-jw8b6 -c weave-npc -n kube-system
+
+# kubectl logs weave-net-jw8b6 -c weave -n kube-system
+
+# kube-api-server --service-cluster-ip-range ipNet (default: 10.0.0.0/24)
+
+# ps aux | grep kube-api-server   --> to get cluster IP.
+
+
+# iptables -L -t nat | grep db-service
+
+#  cat /var/log/kube-proxy.log
+
+# kubectl get configmap -n kube-system
+
+# kubectl get service -n kube-system
+
+# cat /var/lib/kubelet/config.yaml |less   --> to get the DNS IP
+
+
+
+# kubectl cluster-info
+
+
+
+
+
+172.31.33.125  control
+172.31.43.97   worker1
+172.31.47.160  worker2
+
+
+
+
+
+
+
+------------------------------
+##Kubernetes Installation###
+
+
+##Swap disabled. You MUST disable swap in order for the kubelet to work properly.
+
+swapoff -a
+##Verify the MAC address and product_uuid are unique for every node
+cat /sys/class/dmi/id/product_uuid
+yum install -y yum-utils
+yum-config-manager     --add-repo     https://download.docker.com/linux/centos/docker-ce.repo
+yum install docker-ce docker-ce-cli containerd.io -y
+systemctl enable --now docker
+cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+systemctl daemon-reload
+
+systemctl restart docker
+
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+sudo setenforce 0
+
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+systemctl enable kubelet
+
+### NOTE- Hostname should be resolve before run "kubeadm init"
+##kubeadm init
+##kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+
+kubectl get ns
+
+kubectl get namespace wpmysql1 -o json > wpmysql.json
+
+###You can edit namespace on console only kubectl edit <namespace name> remove/delete "Kubernetes" from inside the finalizer section and press enter or save/apply changes.
+sed -i 's/"\kubernetes\"//g' wpmysql.json
+kubectl replace --raw "/api/v1/namespaces/wpmysql1/finalize" -f ./wpmysql.json
+
+kubectl get ns
+
+
+
+
+
